@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from typing import List, Optional
 
 
@@ -50,11 +51,30 @@ class Task:
     description: str
     time: str  # "HH:MM"
     frequency: str
+    due_date: date = field(default_factory=date.today)
     completed: bool = False
 
     def mark_complete(self) -> None:
         """Mark this task as completed."""
         self.completed = True
+
+    def create_next_occurrence(self) -> Optional["Task"]:
+        """Create the next recurring task instance (or None if not recurring)."""
+        freq = self.frequency.strip().lower()
+        if freq == "daily":
+            next_date = self.due_date + timedelta(days=1)
+        elif freq == "weekly":
+            next_date = self.due_date + timedelta(days=7)
+        else:
+            return None
+
+        return Task(
+            description=self.description,
+            time=self.time,
+            frequency=self.frequency,
+            due_date=next_date,
+            completed=False,
+        )
 
 
 class Scheduler:
@@ -64,15 +84,92 @@ class Scheduler:
         """Create a scheduler for a specific owner."""
         self.owner = owner
 
+    @staticmethod
+    def _time_to_minutes(time_str: str) -> int:
+        """Convert 'HH:MM' into minutes since midnight (invalid -> large)."""
+        try:
+            hh_str, mm_str = time_str.split(":")
+            hh = int(hh_str)
+            mm = int(mm_str)
+            if 0 <= hh <= 23 and 0 <= mm <= 59:
+                return hh * 60 + mm
+        except Exception:
+            pass
+        return 24 * 60 + 1
+
     def get_all_tasks(self) -> List[Task]:
         """Return all tasks across the owner's pets."""
         return self.owner.get_all_tasks()
 
+    def filter_tasks(
+        self, pet_name: Optional[str] = None, completed: Optional[bool] = None
+    ) -> List[Task]:
+        """Return tasks filtered by pet name and/or completion status."""
+        tasks: List[Task] = []
+        for pet in self.owner.get_pets():
+            if pet_name is not None and pet.name != pet_name:
+                continue
+            for task in pet.get_tasks():
+                if completed is not None and task.completed != completed:
+                    continue
+                tasks.append(task)
+        return tasks
+
+    def mark_task_complete(self, pet_name: str, task: Task) -> None:
+        """Mark a task complete and auto-create the next recurring instance."""
+        task.mark_complete()
+        next_task = task.create_next_occurrence()
+        if next_task is None:
+            return
+
+        for pet in self.owner.get_pets():
+            if pet.name == pet_name:
+                pet.add_task(next_task)
+                return
+
     def sort_tasks(self, tasks: Optional[List[Task]] = None) -> List[Task]:
         """Return tasks sorted by time (HH:MM)."""
         tasks_to_sort = self.get_all_tasks() if tasks is None else tasks
-        return sorted(tasks_to_sort, key=lambda task: task.time)
+        return sorted(tasks_to_sort, key=lambda task: self._time_to_minutes(task.time))
 
-    def generate_daily_plan(self) -> List[Task]:
-        """Generate a daily plan as a sorted task list."""
-        return self.sort_tasks()
+    def detect_conflicts(self, tasks: Optional[List[Task]] = None) -> List[str]:
+        """Return conflict messages for tasks that share the same time."""
+        tasks_to_check = self.get_all_tasks() if tasks is None else tasks
+        by_time: dict[str, List[Task]] = {}
+        for task in tasks_to_check:
+            by_time.setdefault(task.time, []).append(task)
+
+        conflicts: List[str] = []
+        for time, bucket in sorted(
+            by_time.items(), key=lambda item: self._time_to_minutes(item[0])
+        ):
+            if len(bucket) > 1:
+                descriptions = ", ".join(t.description for t in bucket)
+                conflicts.append(f"Conflict at {time}: {descriptions}")
+        return conflicts
+
+    def generate_daily_plan(
+        self,
+        *,
+        pet_name: Optional[str] = None,
+        include_completed: bool = False,
+        day_of_week: Optional[str] = None,
+    ) -> List[Task]:
+        """Generate a sorted daily plan with simple recurring rules."""
+        tasks = self.filter_tasks(
+            pet_name=pet_name, completed=None if include_completed else False
+        )
+
+        if day_of_week is not None:
+            day_of_week = day_of_week.strip().lower()
+
+        def should_include(task: Task) -> bool:
+            freq = task.frequency.strip().lower()
+            if freq in ("daily", "once"):
+                return True
+            if freq == "weekly":
+                return day_of_week is not None
+            return True
+
+        filtered = [t for t in tasks if should_include(t)]
+        return self.sort_tasks(filtered)

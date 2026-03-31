@@ -32,6 +32,13 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+## Smarter Scheduling
+
+- Sorts tasks by `"HH:MM"` time for a simple daily plan
+- Filters tasks by pet name and completion status
+- Detects conflicts when two tasks share the same time (prints a warning message)
+- Supports basic recurring tasks (`daily`/`weekly`) by auto-creating the next occurrence when a task is completed
+
 ### Suggested workflow
 
 1. Read the scenario carefully and identify requirements and edge cases.

@@ -4,14 +4,22 @@
 
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+For my initial design, I chose four main classes: Owner, Pet, Task, and Scheduler.
+
+The Owner class is responsible for storing the owner's name and managing multiple pets. It acts as the main container for the system.
+
+The Pet class is responsible for storing basic pet information, such as name, species, and age, along with that pet's list of care tasks.
+
+The Task class represents one pet care activity, such as feeding, walking, medication, or an appointment. It stores the task details like description, time, duration, priority, and completion status.
+
+The Scheduler class is responsible for gathering tasks from the owner's pets and organizing them into a daily schedule. Its purpose is to help sort and manage the tasks in one place.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
 
+After reviewing my class skeleton with Copilot, I did not make any major design changes. The main relationships were already clear: the Owner manages multiple pets, each Pet stores its own tasks, and the Scheduler works through the Owner to access and organize tasks.
+
+The review did help me notice a few implementation details to be careful with later, such as keeping the task time format consistent and avoiding duplicated logic between Owner.get_all_tasks() and Scheduler.get_all_tasks(). I decided to keep the design simple for now so it stays aligned with the project requirements.
 ---
 
 ## 2. Scheduling Logic and Tradeoffs
@@ -23,8 +31,8 @@
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+- My scheduler only checks for **exact time conflicts** (two tasks with the same `"HH:MM"`), rather than detecting overlapping tasks based on durations.
+- This tradeoff is reasonable for this starter version because my `Task` model keeps time as a simple string and does not track a start/end range. Exact-match conflict warnings are easy to understand, quick to compute, and still help the owner spot obvious scheduling problems.
 
 ---
 
