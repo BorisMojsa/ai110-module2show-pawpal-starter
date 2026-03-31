@@ -1,3 +1,5 @@
+from datetime import date
+
 from pawpal_system import Owner, Pet, Scheduler, Task
 
 
@@ -38,4 +40,34 @@ def test_scheduler_detects_same_time_conflict() -> None:
     conflicts = scheduler.detect_conflicts()
     assert len(conflicts) == 1
     assert "Conflict at 07:30" in conflicts[0]
+
+
+def test_recurrence_daily_creates_next_day_task_on_completion() -> None:
+    owner = Owner("Jordan")
+    pet = Pet(name="Milo", species="Cat", age=2)
+    today = date(2026, 3, 31)
+    task = Task(description="Feed Milo", time="07:30", frequency="daily", due_date=today)
+    pet.add_task(task)
+    owner.add_pet(pet)
+
+    scheduler = Scheduler(owner)
+    scheduler.mark_task_complete("Milo", task)
+
+    tasks = pet.get_tasks()
+    assert len(tasks) == 2
+
+    completed = [t for t in tasks if t.completed]
+    upcoming = [t for t in tasks if not t.completed]
+    assert len(completed) == 1
+    assert len(upcoming) == 1
+    assert upcoming[0].due_date == date(2026, 4, 1)
+    assert upcoming[0].description == "Feed Milo"
+    assert upcoming[0].time == "07:30"
+
+
+def test_generate_daily_plan_handles_pet_with_no_tasks() -> None:
+    owner = Owner("Jordan")
+    owner.add_pet(Pet(name="Mochi", species="dog", age=3))
+    scheduler = Scheduler(owner)
+    assert scheduler.generate_daily_plan() == []
 

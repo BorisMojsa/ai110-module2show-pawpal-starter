@@ -39,6 +39,18 @@ pip install -r requirements.txt
 - Detects conflicts when two tasks share the same time (prints a warning message)
 - Supports basic recurring tasks (`daily`/`weekly`) by auto-creating the next occurrence when a task is completed
 
+## Testing PawPal+
+
+Run the automated tests:
+
+```bash
+python -m pytest
+```
+
+The tests cover core behaviors like task completion, task sorting by time, recurring daily tasks creating the next-day task, and conflict detection for duplicate times.
+
+**Confidence Level**: ★★★★☆ (4/5) — key scheduling behaviors are tested, but time validation and more recurrence edge cases could be expanded.
+
 ### Suggested workflow
 
 1. Read the scenario carefully and identify requirements and edge cases.
