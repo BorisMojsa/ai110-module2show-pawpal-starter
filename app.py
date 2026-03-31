@@ -40,6 +40,18 @@ At minimum, your system should:
 
 st.divider()
 
+with st.expander("📸 Screenshots (Project Gallery)"):
+    st.caption("These are the screenshots included with the project submission.")
+    st.image(
+        [
+            "assets/screenshot_1.png",
+            "assets/screenshot_2.png",
+            "assets/screenshot_3.png",
+        ],
+        caption=["Overview", "Mid-page controls", "Schedule area"],
+        use_container_width=True,
+    )
+
 st.subheader("App Memory (Session)")
 
 owner_name = st.text_input("Owner name", value="Jordan")
