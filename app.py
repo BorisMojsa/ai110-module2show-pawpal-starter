@@ -106,18 +106,53 @@ if pets:
 st.divider()
 
 st.subheader("Build Schedule")
-st.caption("Generate a daily plan using your Scheduler.")
+st.caption("Generate a daily plan using your Scheduler (sorted, filterable, with warnings).")
+
+col_a, col_b, col_c = st.columns(3)
+with col_a:
+    filter_pet = st.selectbox(
+        "Filter by pet",
+        options=["(all)"] + [p.name for p in pets] if pets else ["(all)"],
+    )
+with col_b:
+    show_completed = st.checkbox("Include completed", value=False)
+with col_c:
+    day_of_week = st.selectbox(
+        "Day (for weekly tasks)",
+        ["(none)", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+        index=0,
+    )
 
 if st.button("Generate schedule"):
     scheduler = Scheduler(owner)
-    plan = scheduler.generate_daily_plan()
+
+    selected_pet_name = None if filter_pet == "(all)" else filter_pet
+    selected_day = None if day_of_week == "(none)" else day_of_week
+
+    plan = scheduler.generate_daily_plan(
+        pet_name=selected_pet_name,
+        include_completed=show_completed,
+        day_of_week=selected_day,
+    )
+
+    conflicts = scheduler.detect_conflicts()
+    if conflicts:
+        st.warning(
+            "Potential time conflicts detected. Consider moving one of the tasks to reduce stress for you and your pet."
+        )
+        for message in conflicts:
+            st.write(f"- {message}")
 
     rows = []
-    for p in owner.get_pets():
-        for t in p.get_tasks():
-            rows.append((t.time, p.name, t.description, t.completed))
+    for pet in owner.get_pets():
+        if selected_pet_name is not None and pet.name != selected_pet_name:
+            continue
+        for task in pet.get_tasks():
+            if not show_completed and task.completed:
+                continue
+            rows.append((task.due_date.isoformat(), task.time, pet.name, task.description, task.completed))
 
-    rows = sorted(rows, key=lambda r: r[0])
+    rows = sorted(rows, key=lambda r: Scheduler._time_to_minutes(r[1]))
 
     if not rows:
         st.info("No tasks found yet. Add a pet and at least one task.")
@@ -126,11 +161,12 @@ if st.button("Generate schedule"):
         st.table(
             [
                 {
+                    "Date": due_date,
                     "Time": time,
                     "Pet": pet_name,
                     "Task": description,
                     "Status": "[x]" if completed else "[ ]",
                 }
-                for time, pet_name, description, completed in rows
+                for due_date, time, pet_name, description, completed in rows
             ]
         )

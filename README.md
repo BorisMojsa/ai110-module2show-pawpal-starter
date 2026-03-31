@@ -39,6 +39,19 @@ pip install -r requirements.txt
 - Detects conflicts when two tasks share the same time (prints a warning message)
 - Supports basic recurring tasks (`daily`/`weekly`) by auto-creating the next occurrence when a task is completed
 
+## Features
+
+- **Multi-pet support**: create an owner and add multiple pets
+- **Task scheduling**: add tasks with a time (`HH:MM`), frequency, and completion status
+- **Sorting by time**: daily plan is ordered chronologically
+- **Filtering**: view tasks by pet name and/or completion status
+- **Conflict warnings**: flags when two tasks share the same time
+- **Recurring tasks**: completing a `daily` or `weekly` task creates the next occurrence automatically
+
+## 📸 Demo
+
+<a href="/course_images/ai110/pawpal_demo.png" target="_blank"><img src='/course_images/ai110/pawpal_demo.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>
+
 ## Testing PawPal+
 
 Run the automated tests:

@@ -26,8 +26,8 @@ The review did help me notice a few implementation details to be careful with la
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+- My scheduler primarily considers **time order** (sorting tasks by their `"HH:MM"` value) and **completion status** (optionally excluding completed tasks from the daily plan).
+- I chose these constraints first because they are the most visible and useful for a pet owner: you want a clear chronological list of what to do next, and you usually want the plan to focus on what still needs to be done.
 
 **b. Tradeoffs**
 
@@ -40,13 +40,13 @@ The review did help me notice a few implementation details to be careful with la
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+- I used Copilot to brainstorm a small, realistic UML design, to generate initial class skeletons, and to help draft simple algorithms (sorting by time, filtering, recurrence rollover, and conflict warnings).
+- The most helpful prompts were specific and constrained, like: “add a beginner-friendly filter method,” “sort HH:MM times safely,” and “write a small pytest for daily recurrence.”
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+- One suggestion I modified was adding more advanced scheduling features (like durations, priorities, and overlap detection). I rejected that scope increase to keep the system aligned with the four-class design and the project requirements.
+- I verified changes by running the CLI demo (`main.py`) and writing/expanding pytest tests to confirm behavior (sorting, conflicts, recurrence) before committing.
 
 ---
 
@@ -54,13 +54,13 @@ The review did help me notice a few implementation details to be careful with la
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+- I tested task completion, adding tasks to a pet, sorting tasks by time, daily recurrence creating the next-day task, conflict detection for duplicate times, and the edge case of a pet with no tasks.
+- These tests are important because they verify the “smart” behaviors are correct and prevent regressions when I make changes to the scheduler logic.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+- I’m reasonably confident (about 4/5) because the key behaviors are covered by automated tests and the CLI demo shows the same results.
+- Next, I would test time-format edge cases (invalid `"HH:MM"` input), weekly recurrence rules tied to an actual weekday, and more complex conflict cases (like overlap checking if durations were added back).
 
 ---
 
@@ -68,12 +68,12 @@ The review did help me notice a few implementation details to be careful with la
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+- I’m most satisfied with keeping the design small and consistent (Owner → Pets → Tasks, plus a Scheduler) while still adding “smart” behaviors like sorting, filtering, recurrence rollover, and conflict warnings.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+- I would improve how times/dates are represented (moving from strings to stronger types or validation), and I would refine recurrence to be more realistic (for example, weekly tasks on a specific day).
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+- My key takeaway is that AI is most effective when I stay the “lead architect”: I set constraints, review suggestions critically, and verify behavior with small demos and tests. Using separate chat sessions per phase helped keep context focused and prevented scope creep.
