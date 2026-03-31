@@ -38,6 +38,9 @@ pip install -r requirements.txt
 - Filters tasks by pet name and completion status
 - Detects conflicts when two tasks share the same time (prints a warning message)
 - Supports basic recurring tasks (`daily`/`weekly`) by auto-creating the next occurrence when a task is completed
+- Priority-based scheduling (high → low, then time)
+- Suggests a next available time slot when conflicts exist
+- Optional persistence to `data.json` so pets/tasks survive app restarts
 
 ## Features
 
@@ -47,6 +50,13 @@ pip install -r requirements.txt
 - **Filtering**: view tasks by pet name and/or completion status
 - **Conflict warnings**: flags when two tasks share the same time
 - **Recurring tasks**: completing a `daily` or `weekly` task creates the next occurrence automatically
+- **Priority scheduling**: high priority tasks appear first (then sorted by time)
+- **Next available slot**: suggests a conflict-free time in 15-minute steps
+- **Persistence**: saves/loads your owner, pets, and tasks to/from `data.json`
+
+## How Agent Mode helped
+
+Agent Mode was useful for making coordinated changes across the backend (`pawpal_system.py`), the Streamlit UI (`app.py`), and the test suite, while keeping the design constrained to the original classes.
 
 ## 📸 Demo
 

@@ -2,6 +2,8 @@ import streamlit as st
 
 from pawpal_system import Owner, Pet, Scheduler, Task
 
+DATA_PATH = "data.json"
+
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
@@ -56,10 +58,11 @@ st.subheader("App Memory (Session)")
 
 owner_name = st.text_input("Owner name", value="Jordan")
 if "owner" not in st.session_state:
-    st.session_state["owner"] = Owner(owner_name)
+    st.session_state["owner"] = Owner.load_from_json(DATA_PATH)
 
 owner: Owner = st.session_state["owner"]
 owner.name = owner_name
+owner.save_to_json(DATA_PATH)
 
 st.markdown("### Add a Pet")
 with st.form("add_pet_form", clear_on_submit=True):
@@ -71,6 +74,7 @@ with st.form("add_pet_form", clear_on_submit=True):
 if submitted and pet_name.strip():
     owner.add_pet(Pet(name=pet_name.strip(), species=species, age=int(age)))
     st.success(f"Added pet: {pet_name.strip()}")
+    owner.save_to_json(DATA_PATH)
 
 pets = owner.get_pets()
 if pets:
@@ -91,13 +95,20 @@ if pets:
         description = st.text_input("Task description", value="Morning walk")
         time = st.text_input("Time (HH:MM)", value="08:00")
         frequency = st.selectbox("Frequency", ["daily", "weekly", "once"], index=0)
+        priority = st.selectbox("Priority", ["low", "medium", "high"], index=1)
         task_submitted = st.form_submit_button("Add task")
 
     if task_submitted and description.strip() and time.strip():
         selected_pet.add_task(
-            Task(description=description.strip(), time=time.strip(), frequency=frequency)
+            Task(
+                description=description.strip(),
+                time=time.strip(),
+                frequency=frequency,
+                priority=priority,
+            )
         )
         st.success(f"Added task for {selected_pet.name}: {description.strip()}")
+        owner.save_to_json(DATA_PATH)
 else:
     st.info("Add a pet first to start scheduling tasks.")
 
@@ -107,11 +118,20 @@ if pets:
     for p in pets:
         for t in p.get_tasks():
             status = "[x]" if t.completed else "[ ]"
+            pr = t.priority.strip().lower()
+            pr_icon = "🔴" if pr == "high" else "🟡" if pr == "medium" else "🟢"
             task_rows.append(
-                {"time": t.time, "pet": p.name, "task": t.description, "status": status}
+                {
+                    "date": t.due_date.isoformat(),
+                    "time": t.time,
+                    "pet": p.name,
+                    "priority": f"{pr_icon} {t.priority}",
+                    "task": t.description,
+                    "status": status,
+                }
             )
     if task_rows:
-        st.table(sorted(task_rows, key=lambda r: r["time"]))
+        st.table(sorted(task_rows, key=lambda r: Scheduler._time_to_minutes(r["time"])))
     else:
         st.info("No tasks yet. Add one above.")
 
@@ -154,17 +174,31 @@ if st.button("Generate schedule"):
         )
         for message in conflicts:
             st.write(f"- {message}")
+        suggestion = scheduler.next_available_time("08:00")
+        st.info(f"Next available slot suggestion: **{suggestion}**")
 
     rows = []
-    for pet in owner.get_pets():
-        if selected_pet_name is not None and pet.name != selected_pet_name:
-            continue
-        for task in pet.get_tasks():
-            if not show_completed and task.completed:
-                continue
-            rows.append((task.due_date.isoformat(), task.time, pet.name, task.description, task.completed))
+    for task in plan:
+        pr = task.priority.strip().lower()
+        pr_icon = "🔴" if pr == "high" else "🟡" if pr == "medium" else "🟢"
+        rows.append(
+            (
+                task.due_date.isoformat(),
+                task.time,
+                task.priority,
+                pr_icon,
+                task.description,
+                task.completed,
+            )
+        )
 
-    rows = sorted(rows, key=lambda r: Scheduler._time_to_minutes(r[1]))
+    rows = sorted(
+        rows,
+        key=lambda r: (
+            {"high": 0, "medium": 1, "low": 2}.get(r[2].strip().lower(), 99),
+            Scheduler._time_to_minutes(r[1]),
+        ),
+    )
 
     if not rows:
         st.info("No tasks found yet. Add a pet and at least one task.")
@@ -175,10 +209,10 @@ if st.button("Generate schedule"):
                 {
                     "Date": due_date,
                     "Time": time,
-                    "Pet": pet_name,
+                    "Priority": f"{pr_icon} {priority}",
                     "Task": description,
                     "Status": "[x]" if completed else "[ ]",
                 }
-                for due_date, time, pet_name, description, completed in rows
+                for due_date, time, priority, pr_icon, description, completed in rows
             ]
         )

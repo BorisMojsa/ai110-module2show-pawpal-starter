@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+import json
+from pathlib import Path
 from typing import List, Optional
 
 
@@ -29,6 +31,68 @@ class Owner:
             all_tasks.extend(pet.get_tasks())
         return all_tasks
 
+    def save_to_json(self, path: str = "data.json") -> None:
+        """Save this owner, pets, and tasks to a JSON file."""
+        data = {
+            "owner": {
+                "name": self.name,
+                "pets": [
+                    {
+                        "name": pet.name,
+                        "species": pet.species,
+                        "age": pet.age,
+                        "tasks": [
+                            {
+                                "description": task.description,
+                                "time": task.time,
+                                "frequency": task.frequency,
+                                "due_date": task.due_date.isoformat(),
+                                "priority": task.priority,
+                                "completed": task.completed,
+                            }
+                            for task in pet.get_tasks()
+                        ],
+                    }
+                    for pet in self.get_pets()
+                ],
+            }
+        }
+        Path(path).write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+    @staticmethod
+    def load_from_json(path: str = "data.json") -> "Owner":
+        """Load an owner, pets, and tasks from a JSON file (or return a blank owner)."""
+        file_path = Path(path)
+        if not file_path.exists():
+            return Owner("Jordan")
+
+        raw = json.loads(file_path.read_text(encoding="utf-8"))
+        owner_raw = raw.get("owner", {})
+        owner = Owner(owner_raw.get("name", "Jordan"))
+
+        for pet_raw in owner_raw.get("pets", []):
+            pet = Pet(
+                name=pet_raw.get("name", "Unknown"),
+                species=pet_raw.get("species", "other"),
+                age=int(pet_raw.get("age", 0)),
+            )
+            for task_raw in pet_raw.get("tasks", []):
+                due_date_str = task_raw.get("due_date")
+                due = date.fromisoformat(due_date_str) if due_date_str else date.today()
+                pet.add_task(
+                    Task(
+                        description=task_raw.get("description", ""),
+                        time=task_raw.get("time", "00:00"),
+                        frequency=task_raw.get("frequency", "once"),
+                        due_date=due,
+                        priority=task_raw.get("priority", "medium"),
+                        completed=bool(task_raw.get("completed", False)),
+                    )
+                )
+            owner.add_pet(pet)
+
+        return owner
+
 
 @dataclass
 class Pet:
@@ -52,6 +116,7 @@ class Task:
     time: str  # "HH:MM"
     frequency: str
     due_date: date = field(default_factory=date.today)
+    priority: str = "medium"  # "low" | "medium" | "high"
     completed: bool = False
 
     def mark_complete(self) -> None:
@@ -73,6 +138,7 @@ class Task:
             time=self.time,
             frequency=self.frequency,
             due_date=next_date,
+            priority=self.priority,
             completed=False,
         )
 
@@ -128,9 +194,16 @@ class Scheduler:
                 return
 
     def sort_tasks(self, tasks: Optional[List[Task]] = None) -> List[Task]:
-        """Return tasks sorted by time (HH:MM)."""
+        """Return tasks sorted by priority (high->low), then by time (HH:MM)."""
         tasks_to_sort = self.get_all_tasks() if tasks is None else tasks
-        return sorted(tasks_to_sort, key=lambda task: self._time_to_minutes(task.time))
+        priority_rank = {"high": 0, "medium": 1, "low": 2}
+        return sorted(
+            tasks_to_sort,
+            key=lambda task: (
+                priority_rank.get(task.priority.strip().lower(), 99),
+                self._time_to_minutes(task.time),
+            ),
+        )
 
     def detect_conflicts(self, tasks: Optional[List[Task]] = None) -> List[str]:
         """Return conflict messages for tasks that share the same time."""
@@ -147,6 +220,27 @@ class Scheduler:
                 descriptions = ", ".join(t.description for t in bucket)
                 conflicts.append(f"Conflict at {time}: {descriptions}")
         return conflicts
+
+    def next_available_time(
+        self, desired_time: str, *, step_minutes: int = 15, tasks: Optional[List[Task]] = None
+    ) -> str:
+        """Suggest the next available time that doesn't conflict with existing tasks."""
+        tasks_to_check = self.get_all_tasks() if tasks is None else tasks
+        taken = {t.time for t in tasks_to_check}
+
+        current = self._time_to_minutes(desired_time)
+        if current >= 24 * 60:
+            current = 0
+
+        for _ in range((24 * 60) // max(step_minutes, 1)):
+            hh = current // 60
+            mm = current % 60
+            candidate = f"{hh:02d}:{mm:02d}"
+            if candidate not in taken:
+                return candidate
+            current = (current + step_minutes) % (24 * 60)
+
+        return desired_time
 
     def generate_daily_plan(
         self,
